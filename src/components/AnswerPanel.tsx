@@ -18,7 +18,7 @@ export function AnswerPanel({
   if (!isLoading && !answer && !error) return null;
 
   return (
-    <div className="mx-4 mb-2 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+    <div className="mx-4 mt-2 mb-1 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
       <div className="flex items-center justify-between border-b border-blue-200 px-4 py-2 dark:border-blue-900">
         <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
           Answer

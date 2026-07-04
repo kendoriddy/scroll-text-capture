@@ -6,11 +6,26 @@ import {
   CameraViewport,
   type CameraViewportHandle,
 } from "@/components/CameraViewport";
-import { CaptureButton } from "@/components/CaptureButton";
+import { CaptureButtons } from "@/components/CaptureButtons";
 import { TextEditor } from "@/components/TextEditor";
 import { Toolbar } from "@/components/Toolbar";
 import { AnswerPanel } from "@/components/AnswerPanel";
 import { cropToDataUrl } from "@/lib/cropImage";
+
+async function fetchAnswer(text: string): Promise<string> {
+  const res = await fetch("/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error ?? "Could not get an answer.");
+  }
+
+  return (data.answer as string)?.trim() || "No answer returned.";
+}
 
 export default function Home() {
   const viewportRef = useRef<CameraViewportHandle>(null);
@@ -34,50 +49,55 @@ export default function Home() {
     ensureVideoReady,
   } = useCamera();
 
-  const handleCapture = useCallback(async () => {
+  const performCapture = useCallback(async (): Promise<string> => {
     const focusArea = viewportRef.current?.getFocusArea();
-    if (!focusArea) return;
+    if (!focusArea) throw new Error("Focus area not ready.");
 
     let source = getSourceElement();
 
     if (mode === "camera") {
       const video = await ensureVideoReady();
       if (!video) {
-        setError("Camera not ready. Please wait a moment and try again.");
-        return;
+        throw new Error(
+          "Camera not ready. Please wait a moment and try again.",
+        );
       }
       source = video;
     }
 
-    if (!source) return;
+    if (!source) throw new Error("No image source available.");
 
     if (source instanceof HTMLImageElement && !source.complete) {
-      setError("Image not loaded yet. Please wait a moment.");
-      return;
+      throw new Error("Image not loaded yet. Please wait a moment.");
     }
 
+    const image = cropToDataUrl(source, focusArea.rect, focusArea.rotation);
+    const res = await fetch("/api/ocr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Could not read text. Please try again.");
+    }
+
+    const newText = (data.text as string)?.trim();
+    if (!newText) {
+      throw new Error("No text found in the focus area.");
+    }
+
+    return newText;
+  }, [getSourceElement, ensureVideoReady, mode]);
+
+  const handleCapture = useCallback(async () => {
     setIsProcessing(true);
     setError(null);
 
     try {
-      const image = cropToDataUrl(source, focusArea.rect, focusArea.rotation);
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Could not read text. Please try again.");
-      }
-
-      const newText = (data.text as string)?.trim();
-      if (newText) {
-        setAccumulatedText((prev) =>
-          prev ? `${prev}\n\n${newText}` : newText,
-        );
-      }
+      const newText = await performCapture();
+      setAccumulatedText((prev) => (prev ? `${prev}\n\n${newText}` : newText));
     } catch (err) {
       setError(
         err instanceof Error
@@ -87,7 +107,43 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [getSourceElement, ensureVideoReady, mode]);
+  }, [performCapture]);
+
+  const handleCaptureAndAnswer = useCallback(async () => {
+    setIsProcessing(true);
+    setIsAsking(false);
+    setError(null);
+    setAnswer(null);
+    setAnswerError(null);
+
+    let newText: string;
+    try {
+      newText = await performCapture();
+      setAccumulatedText((prev) => (prev ? `${prev}\n\n${newText}` : newText));
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not read text — try adjusting the focus box.",
+      );
+      setIsProcessing(false);
+      return;
+    }
+
+    setIsProcessing(false);
+    setIsAsking(true);
+
+    try {
+      const result = await fetchAnswer(newText);
+      setAnswer(result);
+    } catch (err) {
+      setAnswerError(
+        err instanceof Error ? err.message : "Could not get an answer.",
+      );
+    } finally {
+      setIsAsking(false);
+    }
+  }, [performCapture]);
 
   const handleAsk = useCallback(async () => {
     if (!accumulatedText.trim()) return;
@@ -97,18 +153,8 @@ export default function Home() {
     setAnswerError(null);
 
     try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: accumulatedText }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Could not get an answer.");
-      }
-
-      setAnswer((data.answer as string)?.trim() || "No answer returned.");
+      const result = await fetchAnswer(accumulatedText);
+      setAnswer(result);
     } catch (err) {
       setAnswerError(
         err instanceof Error ? err.message : "Could not get an answer.",
@@ -159,12 +205,6 @@ export default function Home() {
         </div>
       )}
 
-      <TextEditor
-        value={accumulatedText}
-        onChange={setAccumulatedText}
-        isProcessing={isProcessing}
-      />
-
       <AnswerPanel
         answer={answer}
         isLoading={isAsking}
@@ -175,6 +215,12 @@ export default function Home() {
         }}
       />
 
+      <TextEditor
+        value={accumulatedText}
+        onChange={setAccumulatedText}
+        isProcessing={isProcessing}
+      />
+
       <Toolbar
         text={accumulatedText}
         onClear={handleClear}
@@ -182,9 +228,11 @@ export default function Home() {
         isAsking={isAsking}
       />
 
-      <CaptureButton
+      <CaptureButtons
         onCapture={handleCapture}
+        onCaptureAndAnswer={handleCaptureAndAnswer}
         isProcessing={isProcessing}
+        isAsking={isAsking}
         disabled={!canCapture}
       />
     </div>
