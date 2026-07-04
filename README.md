@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Scroll Text Capture
 
-## Getting Started
+A mobile-first web app that uses your device camera (or uploaded screenshots) to capture text regions, extract text via OpenAI GPT-4o Vision, and accumulate results into an editable document.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Back-camera capture with draggable, resizable focus box
+- Screenshot upload fallback when camera is unavailable
+- Canvas-based crop of the focus area before OCR
+- Append-mode text accumulator for multi-scroll capture sessions
+- Copy to clipboard and clear-all with confirmation
+
+## Prerequisites
+
+- Node.js 18+
+- An [OpenAI API key](https://platform.openai.com/api-keys) with access to `gpt-4o`
+
+## Setup
+
+1. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment variables**
+
+   Copy the example file and add your API key:
+
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+   Edit `.env.local`:
+
+   ```
+   OPENAI_API_KEY=sk-your-key-here
+   ```
+
+   The API key is only used server-side in `/api/ocr` and is never exposed to the browser.
+
+3. **Run locally**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+   To test on a phone over your local network:
+
+   ```bash
+   npm run dev -- -H 0.0.0.0
+   ```
+
+   Then visit `http://<your-computer-ip>:3000` from your phone.
+
+   > **Note:** Camera access requires HTTPS in production. Localhost is exempt. For LAN testing, some browsers may still require HTTPS.
+
+## Deploy to Vercel
+
+1. Push this repo to GitHub
+2. Import the project in [Vercel](https://vercel.com)
+3. Add the environment variable:
+   - `OPENAI_API_KEY` = your OpenAI API key
+4. Deploy
+
+Vercel provides HTTPS automatically, which is required for `getUserMedia` on mobile devices.
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/ocr/route.ts   # OpenAI Vision proxy
+│   ├── layout.tsx
+│   ├── page.tsx           # Main app shell
+│   └── globals.css
+├── components/
+│   ├── CameraViewport.tsx
+│   ├── FocusBox.tsx
+│   ├── CaptureButton.tsx
+│   ├── TextEditor.tsx
+│   ├── Toolbar.tsx
+│   └── ConfirmModal.tsx
+├── hooks/
+│   ├── useCamera.ts
+│   └── useFocusBox.ts
+└── lib/
+    ├── cropImage.ts
+    └── types.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable         | Required | Description                          |
+| ---------------- | -------- | ------------------------------------ |
+| `OPENAI_API_KEY` | Yes      | OpenAI API key for GPT-4o Vision OCR |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Usage
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Allow camera access (or upload a screenshot)
+2. Drag and resize the focus box over the text you want to read
+3. Tap **Capture Text** — extracted text appends to the editor
+4. Scroll your document, adjust the box, and capture again
+5. Edit the accumulated text as needed
+6. Use **Copy Text** or **Clear All** when done
