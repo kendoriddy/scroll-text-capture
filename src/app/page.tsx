@@ -27,15 +27,28 @@ export default function Home() {
     startCamera,
     setImageFile,
     getSourceElement,
+    ensureVideoReady,
   } = useCamera();
 
   const handleCapture = useCallback(async () => {
-    const source = getSourceElement();
     const rect = viewportRef.current?.getFocusRect();
-    if (!source || !rect) return;
+    if (!rect) return;
 
-    if (source instanceof HTMLVideoElement && source.readyState < 2) {
-      setError("Camera not ready. Please wait a moment.");
+    let source = getSourceElement();
+
+    if (mode === "camera") {
+      const video = await ensureVideoReady();
+      if (!video) {
+        setError("Camera not ready. Please wait a moment and try again.");
+        return;
+      }
+      source = video;
+    }
+
+    if (!source) return;
+
+    if (source instanceof HTMLImageElement && !source.complete) {
+      setError("Image not loaded yet. Please wait a moment.");
       return;
     }
 
@@ -70,7 +83,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [getSourceElement]);
+  }, [getSourceElement, ensureVideoReady, mode]);
 
   const canCapture =
     !isLoading && (mode === "camera" || (mode === "image" && !!imageUrl));

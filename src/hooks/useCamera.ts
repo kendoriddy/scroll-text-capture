@@ -2,6 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+async function attachStreamToVideo(
+  video: HTMLVideoElement,
+  stream: MediaStream,
+): Promise<void> {
+  if (video.srcObject !== stream) {
+    video.srcObject = stream;
+  }
+  if (video.paused) {
+    try {
+      await video.play();
+    } catch {
+      // Autoplay may be blocked until user gesture; stream is still attached.
+    }
+  }
+}
+
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -18,9 +34,18 @@ export function useCamera() {
     streamRef.current = null;
   }, []);
 
+  const bindStreamToVideo = useCallback(async () => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (video && stream) {
+      await attachStreamToVideo(video, stream);
+    }
+  }, []);
+
   const startCamera = useCallback(async () => {
     setIsLoading(true);
     setCameraDenied(false);
+    stopStream();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -29,24 +54,20 @@ export function useCamera() {
       });
 
       streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await video.play();
-      }
       setMode("camera");
       setImageUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         imageUrlRef.current = null;
         return null;
       });
+      await bindStreamToVideo();
     } catch {
       setCameraDenied(true);
       setMode("image");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [stopStream, bindStreamToVideo]);
 
   const setImageFile = useCallback(
     (file: File) => {
@@ -79,12 +100,8 @@ export function useCamera() {
         }
 
         streamRef.current = stream;
-        const video = videoRef.current;
-        if (video) {
-          video.srcObject = stream;
-          await video.play();
-        }
         setMode("camera");
+        await bindStreamToVideo();
       } catch {
         if (!cancelled) {
           setCameraDenied(true);
@@ -105,7 +122,13 @@ export function useCamera() {
         imageUrlRef.current = null;
       }
     };
-  }, [stopStream]);
+  }, [stopStream, bindStreamToVideo]);
+
+  useEffect(() => {
+    if (!isLoading && mode === "camera") {
+      void bindStreamToVideo();
+    }
+  }, [isLoading, mode, bindStreamToVideo]);
 
   const getSourceElement = useCallback(():
     | HTMLVideoElement
@@ -114,6 +137,34 @@ export function useCamera() {
     if (mode === "camera") return videoRef.current;
     return imageRef.current;
   }, [mode]);
+
+  const ensureVideoReady =
+    useCallback(async (): Promise<HTMLVideoElement | null> => {
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      if (!video || !stream || mode !== "camera") return null;
+
+      await attachStreamToVideo(video, stream);
+
+      if (video.readyState >= 2) return video;
+
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= 2) {
+          resolve();
+          return;
+        }
+        const onReady = () => {
+          video.removeEventListener("loadeddata", onReady);
+          video.removeEventListener("canplay", onReady);
+          resolve();
+        };
+        video.addEventListener("loadeddata", onReady);
+        video.addEventListener("canplay", onReady);
+        setTimeout(resolve, 3000);
+      });
+
+      return video.readyState >= 2 ? video : null;
+    }, [mode]);
 
   return {
     videoRef,
@@ -125,5 +176,6 @@ export function useCamera() {
     startCamera,
     setImageFile,
     getSourceElement,
+    ensureVideoReady,
   };
 }

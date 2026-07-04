@@ -62,10 +62,10 @@ export const CameraViewport = forwardRef<
         </div>
       )}
 
-      {mode === "camera" && !isLoading && (
+      {mode === "camera" && (
         <video
           ref={videoRef}
-          className="h-full w-full object-cover"
+          className={`h-full w-full object-cover ${isLoading ? "invisible" : ""}`}
           playsInline
           muted
           autoPlay
