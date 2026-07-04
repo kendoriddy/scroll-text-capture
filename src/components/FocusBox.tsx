@@ -1,15 +1,18 @@
 "use client";
 
+import { RotateCw } from "lucide-react";
 import type { Rect, ResizeHandle } from "@/lib/types";
 
 interface FocusBoxProps {
   rect: Rect;
+  rotation: number;
   onDragStart: (clientX: number, clientY: number) => void;
   onResizeStart: (
     handle: ResizeHandle,
     clientX: number,
     clientY: number,
   ) => void;
+  onRotateStart: (clientX: number, clientY: number) => void;
 }
 
 const HANDLE_POSITIONS: Record<ResizeHandle, string> = {
@@ -19,33 +22,28 @@ const HANDLE_POSITIONS: Record<ResizeHandle, string> = {
   se: "bottom-0 right-0 translate-x-1/2 translate-y-1/2 cursor-se-resize",
 };
 
-export function FocusBox({ rect, onDragStart, onResizeStart }: FocusBoxProps) {
+export function FocusBox({
+  rect,
+  rotation,
+  onDragStart,
+  onResizeStart,
+  onRotateStart,
+}: FocusBoxProps) {
   const { x, y, width, height } = rect;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      {/* Dim overlay panels */}
       <div
-        className="absolute left-0 right-0 top-0 bg-black/50"
-        style={{ height: y }}
-      />
-      <div
-        className="absolute left-0 bg-black/50"
-        style={{ top: y, width: x, height }}
-      />
-      <div
-        className="absolute bg-black/50"
-        style={{ top: y, left: x + width, right: 0, height }}
-      />
-      <div
-        className="absolute bottom-0 left-0 right-0 bg-black/50"
-        style={{ top: y + height }}
-      />
-
-      {/* Focus box */}
-      <div
-        className="pointer-events-auto absolute border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"
-        style={{ left: x, top: y, width, height }}
+        className="pointer-events-auto absolute border-2 border-white"
+        style={{
+          left: x,
+          top: y,
+          width,
+          height,
+          transform: `rotate(${rotation}deg)`,
+          transformOrigin: "center center",
+          boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.5)",
+        }}
         onPointerDown={(e) => {
           e.preventDefault();
           onDragStart(e.clientX, e.clientY);
@@ -66,6 +64,19 @@ export function FocusBox({ rect, onDragStart, onResizeStart }: FocusBoxProps) {
             aria-label={`Resize ${handle} corner`}
           />
         ))}
+
+        <div
+          className="absolute left-1/2 top-0 flex h-6 w-6 -translate-x-1/2 -translate-y-[calc(100%+8px)] cursor-grab items-center justify-center rounded-full border-2 border-white bg-amber-500 touch-none active:cursor-grabbing"
+          style={{ touchAction: "none" }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onRotateStart(e.clientX, e.clientY);
+          }}
+          aria-label="Rotate focus area"
+        >
+          <RotateCw className="h-3 w-3 text-white" />
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
 import { CaptureButton } from "@/components/CaptureButton";
 import { TextEditor } from "@/components/TextEditor";
 import { Toolbar } from "@/components/Toolbar";
+import { AnswerPanel } from "@/components/AnswerPanel";
 import { cropToDataUrl } from "@/lib/cropImage";
 
 export default function Home() {
@@ -16,6 +17,9 @@ export default function Home() {
   const [accumulatedText, setAccumulatedText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
+  const [isAsking, setIsAsking] = useState(false);
 
   const {
     videoRef,
@@ -31,8 +35,8 @@ export default function Home() {
   } = useCamera();
 
   const handleCapture = useCallback(async () => {
-    const rect = viewportRef.current?.getFocusRect();
-    if (!rect) return;
+    const focusArea = viewportRef.current?.getFocusArea();
+    if (!focusArea) return;
 
     let source = getSourceElement();
 
@@ -56,7 +60,7 @@ export default function Home() {
     setError(null);
 
     try {
-      const image = cropToDataUrl(source, rect);
+      const image = cropToDataUrl(source, focusArea.rect, focusArea.rotation);
       const res = await fetch("/api/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,6 +88,41 @@ export default function Home() {
       setIsProcessing(false);
     }
   }, [getSourceElement, ensureVideoReady, mode]);
+
+  const handleAsk = useCallback(async () => {
+    if (!accumulatedText.trim()) return;
+
+    setIsAsking(true);
+    setAnswer(null);
+    setAnswerError(null);
+
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: accumulatedText }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not get an answer.");
+      }
+
+      setAnswer((data.answer as string)?.trim() || "No answer returned.");
+    } catch (err) {
+      setAnswerError(
+        err instanceof Error ? err.message : "Could not get an answer.",
+      );
+    } finally {
+      setIsAsking(false);
+    }
+  }, [accumulatedText]);
+
+  const handleClear = useCallback(() => {
+    setAccumulatedText("");
+    setAnswer(null);
+    setAnswerError(null);
+  }, []);
 
   const canCapture =
     !isLoading && (mode === "camera" || (mode === "image" && !!imageUrl));
@@ -126,7 +165,22 @@ export default function Home() {
         isProcessing={isProcessing}
       />
 
-      <Toolbar text={accumulatedText} onClear={() => setAccumulatedText("")} />
+      <AnswerPanel
+        answer={answer}
+        isLoading={isAsking}
+        error={answerError}
+        onDismiss={() => {
+          setAnswer(null);
+          setAnswerError(null);
+        }}
+      />
+
+      <Toolbar
+        text={accumulatedText}
+        onClear={handleClear}
+        onAsk={handleAsk}
+        isAsking={isAsking}
+      />
 
       <CaptureButton
         onCapture={handleCapture}

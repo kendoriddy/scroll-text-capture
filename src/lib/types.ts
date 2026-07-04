@@ -5,4 +5,9 @@ export interface Rect {
   height: number;
 }
 
+export interface FocusArea {
+  rect: Rect;
+  rotation: number;
+}
+
 export type ResizeHandle = "nw" | "ne" | "sw" | "se";

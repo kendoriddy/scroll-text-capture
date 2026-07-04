@@ -4,10 +4,10 @@ import { forwardRef, useImperativeHandle, useRef } from "react";
 import { ImageUp, Loader2 } from "lucide-react";
 import { FocusBox } from "./FocusBox";
 import { useFocusBox } from "@/hooks/useFocusBox";
-import type { Rect } from "@/lib/types";
+import type { FocusArea } from "@/lib/types";
 
 export interface CameraViewportHandle {
-  getFocusRect: () => Rect;
+  getFocusArea: () => FocusArea;
 }
 
 interface CameraViewportProps {
@@ -39,9 +39,14 @@ export const CameraViewport = forwardRef<
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { rect, onDragStart, onResizeStart } = useFocusBox(containerRef);
+  const { rect, rotation, onDragStart, onResizeStart, onRotateStart } =
+    useFocusBox(containerRef);
 
-  useImperativeHandle(ref, () => ({ getFocusRect: () => rect }), [rect]);
+  useImperativeHandle(
+    ref,
+    () => ({ getFocusArea: () => ({ rect, rotation }) }),
+    [rect, rotation],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,8 +91,10 @@ export const CameraViewport = forwardRef<
       {showSource && (
         <FocusBox
           rect={rect}
+          rotation={rotation}
           onDragStart={onDragStart}
           onResizeStart={onResizeStart}
+          onRotateStart={onRotateStart}
         />
       )}
 

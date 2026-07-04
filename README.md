@@ -4,10 +4,11 @@ A mobile-first web app that uses your device camera (or uploaded screenshots) to
 
 ## Features
 
-- Back-camera capture with draggable, resizable focus box
+- Back-camera capture with draggable, resizable, **rotatable** focus box
 - Screenshot upload fallback when camera is unavailable
 - Canvas-based crop of the focus area before OCR
 - Append-mode text accumulator for multi-scroll capture sessions
+- **Get Answer** — short GPT responses for questions or explanations from captured text
 - Copy to clipboard and clear-all with confirmation
 
 ## Prerequisites
@@ -72,7 +73,9 @@ Vercel provides HTTPS automatically, which is required for `getUserMedia` on mob
 ```
 src/
 ├── app/
-│   ├── api/ocr/route.ts   # OpenAI Vision proxy
+│   ├── api/
+│   │   ├── ocr/route.ts   # OpenAI Vision proxy
+│   │   └── ask/route.ts   # Short Q&A responses (gpt-4o-mini)
 │   ├── layout.tsx
 │   ├── page.tsx           # Main app shell
 │   └── globals.css
@@ -104,4 +107,5 @@ src/
 3. Tap **Capture Text** — extracted text appends to the editor
 4. Scroll your document, adjust the box, and capture again
 5. Edit the accumulated text as needed
-6. Use **Copy Text** or **Clear All** when done
+6. Tap **Get Answer** for a short explanation or multiple-choice answer
+7. Use **Copy Text** or **Clear All** when done

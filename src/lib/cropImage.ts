@@ -58,19 +58,30 @@ export function mapDisplayRectToSourcePixels(
 export function cropToDataUrl(
   source: HTMLVideoElement | HTMLImageElement,
   rect: Rect,
+  rotationDeg = 0,
 ): string {
   const { sx, sy, sw, sh } = mapDisplayRectToSourcePixels(source, rect);
 
+  const outW = Math.max(1, Math.round(rect.width));
+  const outH = Math.max(1, Math.round(rect.height));
+
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(rect.width));
-  canvas.height = Math.max(1, Math.round(rect.height));
+  canvas.width = outW;
+  canvas.height = outH;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     throw new Error("Could not get canvas context");
   }
 
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  if (rotationDeg === 0) {
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outW, outH);
+  } else {
+    const rad = (-rotationDeg * Math.PI) / 180;
+    ctx.translate(outW / 2, outH / 2);
+    ctx.rotate(rad);
+    ctx.drawImage(source, sx, sy, sw, sh, -outW / 2, -outH / 2, outW, outH);
+  }
 
   return canvas.toDataURL("image/jpeg", 0.85);
 }

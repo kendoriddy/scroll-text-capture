@@ -17,6 +17,19 @@ function defaultRect(containerWidth: number, containerHeight: number): Rect {
   };
 }
 
+function pointerAngleDeg(
+  clientX: number,
+  clientY: number,
+  centerX: number,
+  centerY: number,
+  containerLeft: number,
+  containerTop: number,
+): number {
+  const x = clientX - containerLeft - centerX;
+  const y = clientY - containerTop - centerY;
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
 export function useFocusBox(containerRef: React.RefObject<HTMLElement | null>) {
   const [rect, setRect] = useState<Rect>({
     x: 0,
@@ -24,6 +37,7 @@ export function useFocusBox(containerRef: React.RefObject<HTMLElement | null>) {
     width: 200,
     height: 80,
   });
+  const [rotation, setRotation] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -57,7 +71,7 @@ export function useFocusBox(containerRef: React.RefObject<HTMLElement | null>) {
   const onDragStart = useCallback(
     (clientX: number, clientY: number) => {
       const el = containerRef.current;
-      if (!el) return null;
+      if (!el) return;
 
       const bounds = el.getBoundingClientRect();
       const startX = clientX;
@@ -87,7 +101,6 @@ export function useFocusBox(containerRef: React.RefObject<HTMLElement | null>) {
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
-      return null;
     },
     [containerRef, rect, clampRect],
   );
@@ -144,5 +157,46 @@ export function useFocusBox(containerRef: React.RefObject<HTMLElement | null>) {
     [containerRef, rect, clampRect],
   );
 
-  return { rect, onDragStart, onResizeStart };
+  const onRotateStart = useCallback(
+    (clientX: number, clientY: number) => {
+      const el = containerRef.current;
+      if (!el) return;
+
+      const bounds = el.getBoundingClientRect();
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      const startAngle = pointerAngleDeg(
+        clientX,
+        clientY,
+        centerX,
+        centerY,
+        bounds.left,
+        bounds.top,
+      );
+      const startRotation = rotation;
+
+      const onMove = (e: PointerEvent) => {
+        const currentAngle = pointerAngleDeg(
+          e.clientX,
+          e.clientY,
+          centerX,
+          centerY,
+          bounds.left,
+          bounds.top,
+        );
+        setRotation(startRotation + (currentAngle - startAngle));
+      };
+
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [containerRef, rect, rotation],
+  );
+
+  return { rect, rotation, onDragStart, onResizeStart, onRotateStart };
 }
