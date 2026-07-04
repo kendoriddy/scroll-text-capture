@@ -15,7 +15,7 @@ export function TextEditor({ value, onChange, isProcessing }: TextEditorProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Captured text will appear here. You can edit freely."
-        className="min-h-[40vh] w-full resize-y rounded-lg border border-zinc-200 bg-white p-4 text-base leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+        className="min-h-[25vh] w-full resize-y rounded-lg border border-zinc-200 bg-white p-4 text-base leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500"
         aria-label="Accumulated text editor"
       />
 
