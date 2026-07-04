@@ -75,7 +75,7 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── ocr/route.ts   # OpenAI Vision proxy
-│   │   └── ask/route.ts   # Short Q&A responses (gpt-4o-mini)
+│   │   └── ask/route.ts   # Short Q&A responses (gpt-5.5)
 │   ├── layout.tsx
 │   ├── page.tsx           # Main app shell
 │   └── globals.css
@@ -96,9 +96,10 @@ src/
 
 ## Environment Variables
 
-| Variable         | Required | Description                          |
-| ---------------- | -------- | ------------------------------------ |
-| `OPENAI_API_KEY` | Yes      | OpenAI API key for GPT-4o Vision OCR |
+| Variable           | Required | Description                                              |
+| ------------------ | -------- | -------------------------------------------------------- |
+| `OPENAI_API_KEY`   | Yes      | OpenAI API key for GPT-4o Vision OCR and GPT-5.5 answers |
+| `OPENAI_ASK_MODEL` | No       | Model for Get Answer (default: `gpt-5.5`)                |
 
 ## Usage
 

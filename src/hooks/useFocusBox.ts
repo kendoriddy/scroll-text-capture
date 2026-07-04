@@ -8,10 +8,10 @@ const MIN_HEIGHT = 40;
 
 function defaultRect(containerWidth: number, containerHeight: number): Rect {
   const width = containerWidth * 0.8;
-  const height = containerHeight * 0.3;
+  const height = containerHeight * 0.8;
   return {
-    x: (containerWidth - width) / 2,
-    y: (containerHeight - height) / 2,
+    x: containerWidth * 0.1,
+    y: containerHeight * 0.1,
     width,
     height,
   };
